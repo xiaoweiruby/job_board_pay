@@ -934,5 +934,11 @@ app/views/jobs/_panel.html.erb
 ---
 ```
 ![image](https://ws2.sinaimg.cn/large/006tKfTcgy1fq8tyyg0xjj31kw0mywhg.jpg)
+![image](https://ws4.sinaimg.cn/large/006tKfTcgy1fq8tysspnjj31kw0l8mzq.jpg)
 ![image](https://ws3.sinaimg.cn/large/006tKfTcgy1fq8tynqiixj31kw0p3q77.jpg)
-![image](https://ws3.sinaimg.cn/large/006tKfTcgy1fq8tynqiixj31kw0p3q77.jpg)
+
+```
+git add .
+git commit -m "edit job index & show & form add panel"
+git push origin job-scaffold
+```
