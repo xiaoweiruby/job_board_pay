@@ -942,3 +942,42 @@ git add .
 git commit -m "edit job index & show & form add panel"
 git push origin job-scaffold
 ```
+
+```
+git checkout -b uploader
+rails generate uploader Avatar
+---
+app/uploaders/avatar_uploader.rb
+---
+include CarrierWave::MiniMagick
+
+version :thumb do
+  process resize_to_fit: [50, 50]
+end
+
+def extension_whitelist
+  %w(jpg jpeg gif png)
+end
+
+---
+rails g migration add_avatar_to_jobs avatar:string
+rake db:migrate
+---
+
+app/models/user.rb
+---
+class User < ApplicationRecord
+  devise :database_authenticatable, :registerable,
+         :recoverable, :rememberable, :trackable, :validatable
+  has_many :jobs
+end
+
+app/models/job.rb
+---
+class Job < ApplicationRecord
+  belong_to :user
+  mount_uploader :avatar, AvatarUploader
+
+  JOB_TYPES = ["Full-time", "Part-time", "Contract", "Freelance"]
+end
+---
