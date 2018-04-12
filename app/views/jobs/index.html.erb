@@ -10,9 +10,9 @@
     <% @jobs.each do |job| %>
     <div class="columns border-bottom pt4">
       <div class="column is-1">
-        <%# if !job.avatar.file.nil? %>
-          <%#= link_to image_tag(job.avatar_url(:thumb), alt: job.job_author, width: 100, height: 100), job.url %>
-        <%# end %>
+        <% if !job.avatar.file.nil? %>
+          <%= link_to image_tag(job.avatar_url(:thumb), alt: job.job_author, width: 100, height: 100), job.url %>
+        <% end %>
       </div>
       <div class="column is-8">
         <h3 class="title is-4 index-title"><%= link_to job.title, job %></h3>
@@ -23,7 +23,7 @@
           <%= sanitize(job.description.truncate(200, separator: '</p>')) %>
         </div>
 
-        <%# if current_user.try(:admin) || job_author(job) %>
+        <% if current_user.try(:admin) || job_author(job) %>
           <ul class="pv3">
             <li class="inline-block f6">Admin controls: </li>
             <li class="inline-block">
@@ -33,11 +33,11 @@
             <li class="inline-block">
               <%= link_to 'Delete', job, method: :delete, data: { confirm: 'Are you sure?' }, class: 'button is-small is-link is-outlined' %></li>
           </ul>
-        <%# end %>
+        <% end %>
 
         </div>
         <div class="column has-text-right">
-          <%#= job_type(job.job_type) %>
+          <%= job_type(job.job_type) %>
           <p class="pt2 f6"><%= job.location %></p>
         </div>
       </div>

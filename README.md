@@ -1,4 +1,22 @@
 # Let's Build: With Ruby on Rails  - Job Board with Payments
+
+
+![image](https://ws2.sinaimg.cn/large/006tKfTcgy1fq9mmd5ufhj31kw0mvn07.jpg)
+![image](https://ws1.sinaimg.cn/large/006tKfTcgy1fq9mmaemu7j31kw0smn0v.jpg)
+![image](https://ws2.sinaimg.cn/large/006tKfTcgy1fq9mm41jxuj31kw0pcmze.jpg)
+![image](https://ws2.sinaimg.cn/large/006tKfTcgy1fq9mlpfkprj31kw0jxwh0.jpg)
+![image](https://ws3.sinaimg.cn/large/006tKfTcgy1fq9mlj5siwj31kw0j7mzb.jpg)
+
+这个案例是一个非常好的商业闭环的网站的设计。
+
+# 在案例的学习过程中，可以完成五个环节的学习；
+
+- （1）功能体系：主要是完成一个招聘广告的发布，其中包含图片的上传；
+- （2）用户体系：使用 gem 'devise' 具备普通用户和管理员用户，没有管理员的后台？需要加上管理员的后台吗？
+- （3）设计体系：使用 gem 'bulma-rails'完成页面的设计工作，满足页面设计的需要；
+- （4）支付体系：使用 gem 'stripe' 完成支付，在这个体系使用的时候，思考 RMVC 的架构，处在 job controller 里面完成 create 广告功能。
+- （5）部署体系：使用 herkou 和 aliyun 完成部署，这一部分，没有完成，但是我可以完成教学；
+
 ```
 mkdir workspace
 cd workspace
@@ -387,6 +405,107 @@ app/views/jobs/_form.html.erb
   </div>
 <% end %>
 ---
+<%= simple_form_for @job, html: { multipart: true } do |f| %>
+  <%= f.error_notification %>
+
+      <div class="field">
+        <div class="control">
+        <%= f.input :title, required: true, input_html: { class: "input" }, wrapper: false, label_html: { class: "label" }, placeholder: "Frontend Developer" %>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="control">
+          <%= f.input :apply_url, required: true, input_html: { class: "input" }, wrapper: false, label_html: { class: "label" }  %>
+        </div>
+      </div>
+
+
+    <div class="columns">
+      <div class="field column is-4">
+        <div class="control">
+          <label class="label">Job Type:</label>
+          <div class="control has-icons-left">
+            <span class="select">
+              <%= f.input_field :job_type, collection: Job::JOB_TYPES, prompt: "Select a job type" %>
+            </span>
+            <span class="icon is-small is-left">
+              <i class="fa fa-briefcase"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="column">
+
+        <div class="field">
+          <div class="control">
+            <%= f.input :location, require: true, input_html: { class: "input" }, wrapper: false, label_html: { class: "label" }, hint: 'Examples: "San Francisco, CA", "Seattle", "Anywhere"' %>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="control">
+            <label for="job[remote_ok]">
+              <%= f.input :remote_ok, required: false, input_html: { class: "checkbox"}, wrapper: false, label: false %>
+              Work can be done remotely
+            </label><i class="fa fa-wifi"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      <div class="field">
+        <div class="control">
+          <%= f.input :description, required: true, input_html: { class: "textarea" }, wrapper: false, label_html: { class: "label" } %>
+        </div>
+      </div>
+
+
+    <div class="columns">
+
+      <div class="field column">
+        <div class="control">
+          <%= f.input :job_author, required: true, input_html: { class: "input" }, wrapper: false, label_html: { class: "label" }, label: "Company" %>
+        </div>
+      </div>
+
+      <div class="field column">
+        <div class="control">
+          <%= f.input :url, required: true, input_html: { class: "input" }, wrapper: false, label_html: { class: "label" }, label: "Company Website", placeholder: "http://company.com" %>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="columns">
+      <div class="field column is-4">
+        <div class="control">
+          <label class="label">Logo Image</label>
+          <div class="file">
+            <label class="file-label">
+              <%= f.input :avatar, as: :file, required: false, input_html: { class:"file-input job-avatar" }, label: false, wrapper: false %>
+                <span class="file-cta">
+                  <span class="file-icon"><i class="fa fa-upload"></i></span>
+                  <span class="file-label">Choose a file…</span>
+                </span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="column">
+        <output id="list"></output>
+      </div>
+    </div>
+
+    <hr />
+
+    <%#= render 'payment' %>
+
+    <%= f.button :submit, class: "button is-primary is-large is-rounded mv4" %>
+
+<% end %>
+
 ```
 ```
 app/assets/stylesheets/_functions.scss
@@ -981,3 +1100,292 @@ class Job < ApplicationRecord
   JOB_TYPES = ["Full-time", "Part-time", "Contract", "Freelance"]
 end
 ---
+
+```
+![image](https://ws1.sinaimg.cn/large/006tKfTcly1fq8vepsd8rj31fk0omdna.jpg)
+```
+git add .
+git commit -m "add uploader"
+git push origin uploader
+```
+
+```
+git checkout -b figaro
+bundle exec figaro install
+rails g migration add_user_id_to_jobs user_id:integer
+rake db:migrate
+---
+app/controllers/jobs_controller.rb
+---
+class JobsController < ApplicationController
+  before_action :set_job, only: [:show, :edit, :update, :destroy]
+  before_action :authenticate_user!, except: [:index, :show]
+
+  # GET /jobs
+  # GET /jobs.json
+  def index
+    if(params.has_key?(:job_type))
+      @jobs = Job.where(job_type: params[:job_type]).order("created_at desc")
+    else
+      @jobs = Job.all.order("created_at desc")
+    end
+  end
+
+  # GET /jobs/1
+  # GET /jobs/1.json
+  def show
+  end
+
+  # GET /jobs/new
+  def new
+    @job = current_user.jobs.build
+  end
+
+  # GET /jobs/1/edit
+  def edit
+  end
+
+  # POST /jobs
+  # POST /jobs.json
+  def create
+    @job = current_user.jobs.build(job_params)
+
+    token = params[:stripeToken]
+    job_type = params[:job_type]
+    job_title = params[:title]
+    card_brand = params[:user][:card_brand]
+    card_exp_month = params[:user][:card_exp_month]
+    card_exp_year = params[:user][:card_exp_year]
+    card_last4 = params[:user][:card_last4]
+
+    charge = Stripe::Charge.create(
+      :amount => 30000,
+      :currency => "usd",
+      :description => job_type,
+      :statement_descriptor => job_title,
+      :source => token,
+    )
+    current_user.stripe_id = charge.id
+    current_user.card_brand = card_brand
+    current_user.card_exp_month = card_exp_month
+    current_user.card_exp_year = card_exp_year
+    current_user.card_last4 = card_last4
+    current_user.save!
+
+    respond_to do |format|
+      if @job.save
+        format.html { redirect_to @job, notice: '🎉 Your job listing was purchased successfully!' }
+        format.json { render :show, status: :created, location: @job }
+      else
+        format.html { render :new }
+        format.json { render json: @job.errors, status: :unprocessable_entity }
+      end
+    end
+
+    rescue Stripe::CardError => e
+      flash.alert = e.message
+      render action: :new
+  end
+
+  # PATCH/PUT /jobs/1
+  # PATCH/PUT /jobs/1.json
+  def update
+    respond_to do |format|
+      if @job.update(job_params)
+        format.html { redirect_to @job, notice: 'Job was successfully updated.' }
+        format.json { render :show, status: :ok, location: @job }
+      else
+        format.html { render :edit }
+        format.json { render json: @job.errors, status: :unprocessable_entity }
+      end
+    end
+  end
+
+  # DELETE /jobs/1
+  # DELETE /jobs/1.json
+  def destroy
+    @job.destroy
+    respond_to do |format|
+      format.html { redirect_to jobs_url, notice: 'Job was successfully destroyed.' }
+      format.json { head :no_content }
+    end
+  end
+
+  private
+    # Use callbacks to share common setup or constraints between actions.
+    def set_job
+      @job = Job.find(params[:id])
+    end
+
+    # Never trust parameters from the scary internet, only allow the white list through.
+    def job_params
+      params.require(:job).permit(:title, :description, :url, :apply_url, :job_type, :job_author, :remote_ok, :location, :avatar)
+    end
+end
+
+---
+app/views/jobs/new.html.erb
+---
+<h1>New Job</h1>
+
+<%= render 'form', job: @job %>
+
+<%= link_to 'Back', jobs_path %>
+---
+<section class="section">
+  <div class="container">
+    <div class="columns">
+      <div class="column is-8 is-offset-2">
+        <h1 class="title is-3">Post new Job</h1>
+        <%= render 'form', job: @job %>
+      </div>
+    </div>
+  </div>
+</section>
+---
+app/views/jobs/_payment.html.erb
+---
+<% if !@job.persisted? %>
+  <h4 class="subtitle is-4">Payment</h4>
+
+  <div class="notification is-light has-text-centered">
+    <i class="fa fa-credit-card"></i>
+    All jobs cost <strong>$300</strong> USD for 30 days.
+    <span class="block mb4"></span>
+  </div>
+
+  <div class="form-row">
+    <label for="card-element" class="label">
+      Enter credit or debit card
+    </label>
+
+    <div id="card-element" class="form-control">
+      <!-- a Stripe Element will be inserted here. -->
+    </div>
+    <!-- used to display Element errors -->
+    <div id="card-errors" role="alert"></div>
+  </div>
+
+  <% if current_user.stripe_id.present? %>
+    <div class="last-card bg-light pa4 border-radius-3 mt4">
+      <h5 class="is-6 title pt2">Previously used card</h5>
+      <table class="table is-narrow bg-light is-fullwidth">
+        <thead>
+          <th>Card Brand</th>
+          <th>Last 4 Digits</th>
+          <th>Expiration Month</th>
+          <th>Expiration Year</th>
+        </thead>
+        <tr>
+          <td><%= current_user.card_brand %></td>
+          <td><%= current_user.card_last4 %></td>
+          <td><%= current_user.card_exp_month %></td>
+          <td><%= current_user.card_exp_year %></td>
+        </tr>
+      </table>
+    </div>
+  <% end %>
+<% end %>
+---
+config/initializers/stripe.rb
+---
+Rails.configuration.stripe = {
+  :publishable_key => ENV['stripe_publishable_key'],
+  :secret_key      => ENV['stripe_api_key']
+}
+
+Stripe.api_key = ENV['stripe_api_key']
+---
+app/helpers/jobs_helper.rb
+---
+
+module JobsHelper
+
+  def job_type(job_type)
+    if job_type == "Full-time"
+      content_tag :span, "#{job_type}", class: "tag is-primary"
+    elsif job_type == "Part-time"
+      content_tag :span, "#{job_type}", class: "tag is-link"
+    elsif job_type == "Freelance"
+      content_tag :span, "#{job_type}", class: "tag is-warning"
+    elsif job_type == "Contract"
+      content_tag :span, "#{job_type}", class: "tag is-info"
+    else
+      ""
+    end
+  end
+
+  def job_author(job)
+    user_signed_in? && current_user.id == job.user_id
+  end
+end
+---
+```
+# 添加数据
+```
+user = User.new(
+  id: 3,
+  email: "xiaowei@example.com",
+  password: "password",
+  password_confirmation: "password"
+)
+user.save!
+
+Job.create!([{
+  title: "React Engineer",
+  description: "Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Maecenas sed diam eget risus varius blandit sit amet non magna. Aenean lacinia bibendum nulla sed consectetur. Donec sed odio dui. Venenatis dapibus posuere. Nullam id dolor id nibh ultricies vehicula ut id elit. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Curabitur blandit tempus porttitor. Integer posuere erat a ante venenatis dapibus posuere velit aliquet. Nullam id dolor id nibh ultricies vehicula ut id elit. Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor. Nulla vitae elit libero, a pharetra augue. Nulla vitae elit libero, a pharetra augue. Vestibulum id ligula porta felis euismod semper. Maecenas faucibus mollis interdum. Maecenas sed diam eget risus varius blandit sit amet non magna.",
+  url: "https://facebook.com",
+  apply_url: "https://facebook.com/apply",
+  job_type: "Full-time",
+  location: "San Francisco, CA",
+  job_author: "Facebook",
+  user_id: user.id,
+  remote_ok: false
+},
+{
+  title: "Product Designer",
+  description: "Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Maecenas sed diam eget risus varius blandit sit amet non magna. Aenean lacinia bibendum nulla sed consectetur. Donec sed odio dui. Venenatis dapibus posuere. Nullam id dolor id nibh ultricies vehicula ut id elit. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Curabitur blandit tempus porttitor. Integer posuere erat a ante venenatis dapibus posuere velit aliquet. Nullam id dolor id nibh ultricies vehicula ut id elit. Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor. Nulla vitae elit libero, a pharetra augue. Nulla vitae elit libero, a pharetra augue. Vestibulum id ligula porta felis euismod semper. Maecenas faucibus mollis interdum. Maecenas sed diam eget risus varius blandit sit amet non magna.",
+  url: "https://slack.com",
+  apply_url: "https://slack.com/apply",
+  job_type: "Contract",
+  location: "San Francisco, CA",
+  job_author: "Slack",
+  user_id: user.id,
+  remote_ok: false
+},
+{
+  title: "UI/UX Designer",
+  description: "Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Maecenas sed diam eget risus varius blandit sit amet non magna. Aenean lacinia bibendum nulla sed consectetur. Donec sed odio dui. Venenatis dapibus posuere. Nullam id dolor id nibh ultricies vehicula ut id elit. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Curabitur blandit tempus porttitor. Integer posuere erat a ante venenatis dapibus posuere velit aliquet. Nullam id dolor id nibh ultricies vehicula ut id elit. Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor. Nulla vitae elit libero, a pharetra augue. Nulla vitae elit libero, a pharetra augue. Vestibulum id ligula porta felis euismod semper. Maecenas faucibus mollis interdum. Maecenas sed diam eget risus varius blandit sit amet non magna.",
+  url: "https://trello.com",
+  apply_url: "https://trello.com/apply",
+  job_type: "Full-time",
+  location: "Anywhere",
+  job_author: "Trello",
+  user_id: user.id,
+  remote_ok: true
+}
+])
+---
+rake db:drop
+rake db:create
+rake db:migrate
+rake db:seed
+rails server
+---
+```
+```
+rails c
+2.3.1 :001 > user = User.last
+2.3.1 :002 > user.admin = ture
+2.3.1 :003 > user.admin = true
+2.3.1 :004 > user.save
+2.3.1 :005 > exit
+```
+![image](https://ws4.sinaimg.cn/large/006tKfTcgy1fq9mix268sj31kw0fmjvo.jpg)
+
+# 结束表现形式
+![image](https://ws2.sinaimg.cn/large/006tKfTcgy1fq9mmd5ufhj31kw0mvn07.jpg)
+![image](https://ws1.sinaimg.cn/large/006tKfTcgy1fq9mmaemu7j31kw0smn0v.jpg)
+![image](https://ws2.sinaimg.cn/large/006tKfTcgy1fq9mm41jxuj31kw0pcmze.jpg)
+![image](https://ws2.sinaimg.cn/large/006tKfTcgy1fq9mlpfkprj31kw0jxwh0.jpg)
+![image](https://ws3.sinaimg.cn/large/006tKfTcgy1fq9mlj5siwj31kw0j7mzb.jpg)
